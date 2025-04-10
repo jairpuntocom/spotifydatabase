@@ -1,0 +1,84 @@
+import spotipy
+from spotipy.oauth2 import SpotifyClientCredentials
+import pandas as pd
+import time
+
+# Tus claves
+client_id = 'c2bf2b939b8842a691dd5761a85f71a5'
+client_secret = '30868556466b4f4787ca908d992b9ab6'
+
+# Autenticación
+auth_manager = SpotifyClientCredentials(client_id=client_id, client_secret=client_secret)
+sp = spotipy.Spotify(auth_manager=auth_manager)
+
+# Géneros que quieres analizar
+generos = ['reggaeton', 'pop', 'rock', 'hip hop', 'latin', 'electronic']
+
+# Países para analizar la popularidad
+mercados = ['US', 'MX', 'GB', 'DE', 'FR', 'BR', 'AR', 'ES', 'JP', 'AU']
+
+# Almacenar todos los datos
+canciones_totales = []
+
+# Función para extraer año
+def extraer_anio(fecha):
+    try:
+        return fecha.split('-')[0]
+    except:
+        return None
+
+# Buscar artistas por género y obtener canciones
+for genero in generos:
+    print(f"🔍 Buscando artistas de género: {genero}")
+    offset = 0
+    while True:
+        # Hacer la búsqueda de artistas
+        resultados = sp.search(q=f'genre:{genero}', type='artist', limit=50, offset=offset)
+        
+        if not resultados['artists']['items']:
+            break
+        
+        for artista in resultados['artists']['items']:
+            artista_id = artista['id']
+            artista_nombre = artista['name']
+
+            # Obtener las canciones más populares de ese artista
+            try:
+                top_tracks = sp.artist_top_tracks(artista_id, country='US')
+            except:
+                continue
+
+            for track in top_tracks['tracks']:
+                nombre = track['name']
+                fecha = track['album']['release_date']
+                anio = extraer_anio(fecha)
+
+                # Obtener la popularidad de la canción por mercado (país)
+                for mercado in mercados:
+                    try:
+                        track_info = sp.track(track['id'], market=mercado)
+                        popularidad = track_info['popularity']
+                        canciones_totales.append({
+                            'genero': genero,
+                            'artista': artista_nombre,
+                            'cancion': nombre,
+                            'anio': anio,
+                            'mercado': mercado,
+                            'popularidad': popularidad
+                        })
+                    except:
+                        continue
+
+                time.sleep(0.5)  
+
+        
+        offset += 50
+      
+        time.sleep(0.5)
+
+
+df_popularidad = pd.DataFrame(canciones_totales)
+
+
+df_popularidad.to_csv("spotify_popularidad_por_pais.csv", index=False)
+print("Dataset guardado como 'spotify_popularidad_por_pais.csv'")

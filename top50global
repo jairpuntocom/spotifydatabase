@@ -1,0 +1,36 @@
+import spotipy
+from spotipy.oauth2 import SpotifyClientCredentials
+import pandas as pd
+
+# Reemplaza por tus claves
+client_id = 'c2bf2b939b8842a691dd5761a85f71a5'
+client_secret = '30868556466b4f4787ca908d992b9ab6'
+
+try:
+    # Autenticación de la API
+    auth_manager = SpotifyClientCredentials(client_id=client_id, client_secret=client_secret)
+    sp = spotipy.Spotify(auth_manager=auth_manager)
+
+    # Endpoint: Tracks más populares globalmente
+    results = sp.search(q='*', type='track', limit=50)
+
+    canciones_populares = []
+
+    for i, track in enumerate(results['tracks']['items']):
+        canciones_populares.append({
+            'ranking': i + 1,
+            'cancion': track['name'],
+            'artista': track['artists'][0]['name'],
+            'popularidad': track['popularity'],
+            'fecha_lanzamiento': track['album']['release_date']
+        })
+
+    # Convertir a DataFrame
+    df_populares = pd.DataFrame(canciones_populares)
+
+    # Guardar como CSV
+    df_populares.to_csv("spotify_top_tracks_global.csv", index=False)
+    print("✅ Los datos de las canciones populares globales han sido guardados en 'spotify_top_tracks_global.csv'")
+
+except Exception as e:
+    print(" Error al obtener los datos:", str(e))

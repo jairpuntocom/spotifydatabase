@@ -1,0 +1,54 @@
+import spotipy
+from spotipy.oauth2 import SpotifyClientCredentials
+import pandas as pd
+import time
+
+# Autenticación con tus credenciales
+client_id = 'c2bf2b939b8842a691dd5761a85f71a5'
+client_secret = '30868556466b4f4787ca908d992b9ab6'
+
+auth_manager = SpotifyClientCredentials(client_id=client_id, client_secret=client_secret)
+sp = spotipy.Spotify(auth_manager=auth_manager)
+
+# Lista de géneros a consultar
+generos = ['pop', 'reggaeton ', 'rock', 'hip hop', 'latin', 'electronic']  
+# Listado para guardar resultados
+canciones_data = []
+
+# Función para extraer canciones por género
+for genero in generos:
+    print(f'Consultando canciones de género: {genero}')
+    for offset in range(0, 1000, 50):  # Límite máximo: offset + limit <= 1000
+        try:
+            resultados = sp.search(q=f'genre:{genero}', type='artist', limit=50, offset=offset)
+            artistas = resultados['artists']['items']
+
+            for artista in artistas:
+                artist_name = artista['name']
+                artist_id = artista['id']
+
+                # Obtener top tracks del artista
+                try:
+                    top_tracks = sp.artist_top_tracks(artist_id, country='US')['tracks']
+                    for track in top_tracks:
+                        canciones_data.append({
+                            'artista': artist_name,
+                            'nombre_cancion': track['name'],
+                            'popularidad': track['popularity'],
+                            'fecha_lanzamiento': track['album']['release_date'],
+                            'genero': genero
+                        })
+                except Exception as e:
+                    print(f'Error obteniendo top tracks de {artist_name}: {e}')
+                    continue
+
+            time.sleep(0.2)  # Espera para evitar rate limit
+        except Exception as e:
+            print(f'Error con offset {offset} en género {genero}: {e}')
+            continue
+
+# Crear DataFrame y guardar en CSV
+df = pd.DataFrame(canciones_data)
+df.to_csv('spotify_canciones_por_genero_10000.csv', index=False, encoding='utf-8')
+
+print("¡Extracción completada! Archivo guardado como 'spotify_canciones_por_genero_10000.csv'")
